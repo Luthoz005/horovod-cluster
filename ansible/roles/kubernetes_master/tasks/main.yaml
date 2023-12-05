@@ -23,7 +23,7 @@
 
 - name: download calico.yaml
   ansible.builtin.get_url:
-    url: https://krajflix.v4y.hu:9943/root/horovod-helm/-/raw/main/calico-custom.yaml
+    url: https://raw.githubusercontent.com/Luthoz005/horovod-cluster/main/calico-custom.yaml
     validate_certs: false
     dest: /opt/calico-custom.yaml
 

@@ -2,7 +2,7 @@
 - name: download horovod-chart
   ansible.builtin.get_url:
     validate_certs: false
-    url: https://krajflix.v4y.hu:9943/root/horovod-helm/-/archive/main/horovod-helm-main.tar
+    url: https://github.com/Luthoz005/horovod-cluster/archive/refs/heads/main.zip
     dest: /opt/horovod-helm-main.tar
 
 - name: unarchive horovod-chart
