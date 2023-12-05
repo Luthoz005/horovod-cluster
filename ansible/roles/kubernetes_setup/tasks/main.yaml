@@ -1,0 +1,45 @@
+---
+- name: Remove swapfile from /etc/fstab
+  mount:
+    name: "{{ item }}"
+    fstype: swap
+    state: absent
+  with_items:
+    - swap
+    - none
+
+- name: Disable swap
+  command: swapoff -a
+
+- name: Add an apt signing key for Kubernetes
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: Adding apt repository for Kubernetes
+  apt_repository:
+    repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+    state: present
+    filename: kubernetes.list
+
+- name: Install nfs-common
+  apt:
+    name: nfs-common
+    state: present
+    allow_unauthenticated: yes
+
+- name: Install Kubernetes binaries
+  apt:
+    name: "{{ item }}"
+    state: present
+    allow_unauthenticated: yes
+  with_items:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+- name: Restart kubelet
+  service:
+    name: kubelet
+    daemon_reload: yes
+    state: restarted

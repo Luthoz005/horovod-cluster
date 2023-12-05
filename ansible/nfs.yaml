@@ -1,0 +1,7 @@
+---
+- name: Create Kubernetes workers
+  hosts: nfs
+  remote_user: ubuntu
+  become: yes
+  roles:
+    - nfs

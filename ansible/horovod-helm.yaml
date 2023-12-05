@@ -1,0 +1,8 @@
+- name: deploy horovod
+  hosts: k8s_master
+  remote_user: ubuntu
+  become: yes
+  vars_files:
+    - "var_file.yml"
+  roles:
+    - horovod

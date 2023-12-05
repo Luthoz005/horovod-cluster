@@ -1,0 +1,56 @@
+---
+- name: download horovod-chart
+  ansible.builtin.get_url:
+    validate_certs: false
+    url: https://krajflix.v4y.hu:9943/root/horovod-helm/-/archive/main/horovod-helm-main.tar
+    dest: /opt/horovod-helm-main.tar
+
+- name: unarchive horovod-chart
+  ansible.builtin.unarchive:
+    remote_src: true
+    src: /opt/horovod-helm-main.tar
+    dest: /opt/
+
+- name: install horovod
+  become: false
+  shell: |
+    helm install \
+         --set-string SSH_storage={{ ssh_storage}} \
+         --set-string=Horovod_storage={{ horovod_storage }} \
+         --set-string JUPYTER_Passwd={{ Passwd }} \
+         --set Horovod_Worker_Count={{ horovod_count }} \
+         --set NODEPort={{ Nodeport}} \
+         --set nfs_ip={{ Nfs_ip }} \
+         --set ssh_folder={{ ssh_folder }} \
+         --set horovod_folder_path={{ horovod_folder_path }} \
+         horovod /opt/horovod-helm-main/horovod-gpu/
+
+- name: Wait until horovod-master is running
+  become: false
+  command: kubectl wait  pod/horovod-master --for=condition=Ready -n horovod --timeout=-1s
+
+- name: Wait until horovod-worker is running
+  become: false
+  command: kubectl wait --for=condition=available deployment/horovod-worker -n horovod --timeout=-1s 
+
+- name: change folder permission
+  become: false
+  command: kubectl exec -it -n horovod horovod-master -- chmod 700 /root/.ssh
+
+- name: create a file with pod ips
+  become: false
+  shell: |
+    kubectl get pods -n horovod -o custom-columns=PodIP:status.podIP > /home/ubuntu/ips
+
+- name: cp ips to horovod-master
+  become: false
+  command: kubectl cp /home/ubuntu/ips horovod/horovod-master:/horovod/hosts
+
+- name: delete tar
+  command: rm /opt/horovod-helm-main.tar
+
+- name: delete ips file
+  command: rm /home/ubuntu/ips
+
+- name: delete horovod folder
+  command: rm -r /opt/horovod-helm-main

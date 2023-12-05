@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: horovod-worker
+  namespace: horovod
+spec:
+  selector:
+    matchLabels:
+      run: horovod-worker
+  replicas: {{ .Values.Horovod_Worker_Count }} # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        run: horovod-worker
+    spec:
+      containers:
+      - args:
+        securityContext:
+          privileged: true
+        env:
+        - name: SSH_SERVER
+          value: "true"
+        - name: SSH_SERVER_PORT
+          value: "12345"
+        name: horovod
+        image: git.sztaki.hu:5050/science-cloud/reference-architectures/horovod/horovod-cpu:v0.3.0
+        volumeMounts:
+        - name: horovod-folder-storage
+          mountPath: /horovod
+        - name: horovod-ssh-storage
+          mountPath: /root/.ssh
+      volumes:
+      - name: horovod-folder-storage
+        persistentVolumeClaim:
+          claimName: horovod-folder-pvc
+      - name: horovod-ssh-storage
+        persistentVolumeClaim:
+         claimName: horovod-ssh-pvc

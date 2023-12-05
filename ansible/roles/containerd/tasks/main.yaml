@@ -1,0 +1,95 @@
+---
+- name: Ensure containerd is started and enabled at boot.
+  service:
+    name: containerd
+    state: started
+    enabled: true
+
+- name: Ensure containerd config directory exists.
+  file:
+    path: /etc/containerd
+    state: directory
+  register: containerd_dir
+
+- name: Get defaults from containerd.
+  command: containerd config default
+  changed_when: false
+  register: containerd_config_default
+  #when: containerd_config_default_write
+
+- name: Prepare containerd/config.toml from default config
+  copy:
+    dest: /tmp/containerd_config.toml
+    content: "{{ containerd_config_default.stdout }}"
+  #when: containerd_config_default_write
+  changed_when: false
+
+- name: Set Cgroup driver to systemd
+  lineinfile:
+    insertafter: '.*\[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options\]$'
+    line: '          SystemdCgroup = true'
+    state: present
+    path: /tmp/containerd_config.toml
+  changed_when: false
+
+- name: Make sure  SystemdCgroup = false is not set
+  ansible.builtin.lineinfile:
+    path: /tmp/containerd_config.toml
+    state: absent
+    line: '            SystemdCgroup = false'
+  changed_when: false
+
+- name: Copy config.toml to /etc/containerd
+  copy:
+    remote_src: true
+    src: /tmp/containerd_config.toml
+    dest: /etc/containerd/config.toml
+
+- name: Cleanup temporary file
+  file:
+    path: /tmp/containerd_config.toml
+    state: absent
+  changed_when: false
+
+- name: Ensure containerd is restarted immediately if necessary.
+  meta: flush_handlers
+
+- name: Copy containerd.conf file.
+  template:
+    src: containerd.conf.j2
+    dest: /etc/modules-load.d/containerd.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Copy kubernetes-cri.conf file.
+  template:
+    src: 99-kubernetes-cri.conf.j2
+    dest: /etc/sysctl.d/99-kubernetes-cri.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Add the overlay and br_netfilter module
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - overlay
+    - br_netfilter
+
+- name: Apply sysctl params without reboot
+  command: sysctl --system
+
+- name: Set cgroup driver to systemd
+  command: "echo {\"exec-opts\": [\"native.cgroupdriver=systemd\"]} >> /etc/docker/daemon.json"
+
+- name: Restart service docker and kubelet, also issue daemon-reload to pick up config changes
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: yes
+    name: "{{ item }}"
+  with_items:
+    - docker
+    - kubelet
+  ignore_errors: true

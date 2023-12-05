@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: horovod-folder-pv
+spec:
+  capacity:
+    storage: {{.Values.Horovod_storage}} 
+  accessModes:
+  - ReadWriteMany
+  nfs: 
+    path: {{.Values.horovod_folder_path}}
+    server: {{.Values.nfs_ip}}
+  persistentVolumeReclaimPolicy: Retain 

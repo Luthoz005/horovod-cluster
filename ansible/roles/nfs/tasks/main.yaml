@@ -1,0 +1,31 @@
+---
+- name: Install Kubernetes binaries
+  apt:
+    name: "nfs-kernel-server"
+    state: present
+
+- name: Create nfs folders
+  ansible.builtin.file:
+    state: directory
+    path: /nfsshare
+    mode: '0700'
+
+- name: Create nfs folders
+  ansible.builtin.file:
+    state: directory
+    path: /nfsshare/horovod
+    mode: '755'
+
+- name: insert Nfs fodlers to exports
+  ansible.builtin.lineinfile:
+    path: /etc/exports
+    line: "{{ item }}"
+  with_items:
+    - "/nfsshare/horovod *(rw,no_root_squash,sync)"
+    - "/nfsshare *(rw,no_root_squash,sync)"
+
+- name: restart nfs
+  service:
+    name: nfs-server
+    daemon_reload: yes
+    state: restarted

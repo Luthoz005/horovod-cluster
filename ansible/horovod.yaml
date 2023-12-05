@@ -1,0 +1,51 @@
+---
+- name: setup nfs
+  hosts: nfs
+  remote_user: ubuntu
+  become: yes
+  vars_files:
+  - "var_file.yml"
+  roles:
+    - role: nfs
+      when: nfs_server == 'true'
+
+
+- name: Create Kubernetes master
+  hosts: k8s_master
+  remote_user: ubuntu
+  become: yes
+  vars_files:
+  - "var_file.yml"
+  roles:
+    - containerd
+    - role: nvidia_roles
+      when: driverInstall == 'true'
+    - kubernetes_setup
+    - kubernetes_master
+    - role: nvidia_helm
+      when: driverInstall == 'true'
+
+- name: Create Kubernetes workers
+  hosts: k8s_worker
+  remote_user: ubuntu
+  become: yes
+  vars_files:
+  - "var_file.yml"
+  roles:
+    - containerd
+    - role: nvidia_roles
+      when: driverInstall == 'true'
+    - kubernetes_setup
+    - kubernetes_worker
+
+- name: deploy horovod
+  hosts: k8s_master
+  remote_user: ubuntu
+  become: yes
+  vars_files:
+    - "var_file.yml"
+  roles:
+    - role: horovod_gpu
+      when: GPU_Horovod == 'true'
+    - role: horovod_cpu
+      when: GPU_Horovod == 'false'

@@ -1,0 +1,61 @@
+---
+- name: Configure default containerd runtime
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'default_runtime_name = "runc"'
+    replace: 'default_runtime_name = "nvidia"'
+
+- name: Configure NVIDIA runtime
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    insertafter: '.*\[plugins."io.containerd.grpc.v1.cri".containerd.runtimes]$'
+    line: "{{ item }}"
+  with_items:
+    - '            SystemdCgroup = true'
+    - '            BinaryName = "/usr/bin/nvidia-container-runtime"'
+    - '          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]'
+    - '          tmp4'
+    - '          tmp3'
+    - '          tmp2'
+    - '          tmp1'
+    - '        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]'
+
+- name: replacetmp
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'tmp4'
+    replace: 'runtime_type = "io.containerd.runc.v2"'
+
+- name: replacetmp
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'tmp3'
+    replace: 'runtime_root = ""'
+
+- name: replacetmp
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'tmp2'
+    replace: 'runtime_engine = ""'
+
+- name: replacetmp
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'tmp1'
+    replace: 'privileged_without_host_devices = false'
+
+
+- name: restart containerd
+  service:
+    name: containerd
+    state: restarted
+
+- name: Restart service docker and kubelet, also issue daemon-reload to pick up config changes
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: yes
+    name: "{{ item }}"
+  with_items:
+    - docker
+    - kubelet
+  ignore_errors: true
